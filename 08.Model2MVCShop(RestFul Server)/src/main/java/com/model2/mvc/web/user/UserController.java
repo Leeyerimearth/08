@@ -27,54 +27,54 @@ import com.model2.mvc.service.user.UserService;
 @Controller
 @RequestMapping("/user/*")
 public class UserController {
-	
+
 	///Field
 	@Autowired
 	@Qualifier("userServiceImpl")
 	private UserService userService;
 	//setter Method 구현 않음
-		
+
 	public UserController(){
 		System.out.println(this.getClass());
 	}
-	
+
 	@Value("#{commonProperties['pageUnit']}")
 	int pageUnit;
 	@Value("#{commonProperties['pageSize']}")
 	int pageSize;
-	
-	
+
+
 	@RequestMapping( value="addUser", method=RequestMethod.GET )  //필요x
 	public String addUser() throws Exception{
-	
+
 		System.out.println("/user/addUser : GET");
-		
+
 		return "redirect:/user/addUserView.jsp";
 	}
-	
+
 	@RequestMapping( value="addUser", method=RequestMethod.POST ) //2019.05.03
 	public String addUser( @ModelAttribute("user") User user ) throws Exception {
 
 		System.out.println("/user/addUser : POST");
 		//Business Logic
 		userService.addUser(user);
-		
+
 		return "redirect:/user/loginView.jsp";
 	}
-	
+
 
 	@RequestMapping( value="getUser", method=RequestMethod.GET ) //2019.05.03 강사님
 	public String getUser( @RequestParam("userId") String userId , Model model ) throws Exception {
-		
+
 		System.out.println("/user/getUser : GET");
 		//Business Logic
 		User user = userService.getUser(userId);
 		// Model 과 View 연결
 		model.addAttribute("user", user);
-		
+
 		return "forward:/user/getUser.jsp";
 	}
-	
+
 
 	@RequestMapping( value="updateUser", method=RequestMethod.GET ) //2019.05.03
 	public String updateUser( @RequestParam("userId") String userId , Model model ) throws Exception{
@@ -84,7 +84,7 @@ public class UserController {
 		User user = userService.getUser(userId);
 		// Model 과 View 연결
 		model.addAttribute("user", user);
-		
+
 		return "forward:/user/updateUser.jsp";
 	}
 
@@ -93,54 +93,64 @@ public class UserController {
 
 		System.out.println("/user/updateUser : POST");
 		//Business Logic
-		userService.updateUser(user);
-		
+
+		//값이 널이어서 updateNull로 됨
+		User sessionUser =(User) session.getAttribute("user");
+		user.setUserPoint(sessionUser.getUserPoint());
+		user.setTotalPayment(sessionUser.getTotalPayment());
+		///////////////////////////////////////////////////////password랑 주민번호는 굳이 session에 넣지않아도될까?
+		user.setSsn(sessionUser.getSsn());
+		user.setPassword(sessionUser.getPassword());
+		///////////////////////////////////////////////////////////////////
+
+		userService.updateUser(user,"nothing");
+
 		String sessionId=((User)session.getAttribute("user")).getUserId();
 		if(sessionId.equals(user.getUserId())){
 			session.setAttribute("user", user);
 		}
-		
+
 		return "redirect:/user/getUser?userId="+user.getUserId();
 	}
-	
-	
+
+
 	@RequestMapping( value="login", method=RequestMethod.GET ) // 필요x
 	public String login() throws Exception{
-		
+
 		System.out.println("/user/logon : GET");
 
 		return "redirect:/user/loginView.jsp";
 	}
-	
+
 	@RequestMapping( value="login", method=RequestMethod.POST ) //강사님
 	public String login(@ModelAttribute("user") User user , HttpSession session ) throws Exception{
-		
+
 		System.out.println("/user/login : POST");
 		//Business Logic
 		User dbUser=userService.getUser(user.getUserId());
-		
+
 		if( user.getPassword().equals(dbUser.getPassword())){
 			session.setAttribute("user", dbUser);
 		}
-		
+
 		return "redirect:/index.jsp";
 	}
-		
-	
+
+
 	@RequestMapping( value="logout", method=RequestMethod.GET ) // 2019.05.08
 	public String logout(HttpSession session ) throws Exception{
-		
+
 		System.out.println("/user/logout : POST");
-		
+
 		session.invalidate();
-		
+
 		return "redirect:/index.jsp";
 	}
-	
-	
+
+
 	@RequestMapping( value="checkDuplication", method=RequestMethod.POST ) //2019.05.08
 	public String checkDuplication( @RequestParam("userId") String userId , Model model ) throws Exception{
-		
+
 		System.out.println("/user/checkDuplication : POST");
 		//Business Logic
 		boolean result=userService.checkDuplication(userId);
@@ -151,28 +161,28 @@ public class UserController {
 		return "forward:/user/checkDuplication.jsp";
 	}
 
-	
+
 	@RequestMapping( value="listUser" )
 	public String listUser( @ModelAttribute("search") Search search , Model model , HttpServletRequest request) throws Exception{
-		
+
 		System.out.println("/user/listUser : GET / POST");
-		
+
 		if(search.getCurrentPage() ==0 ){
 			search.setCurrentPage(1);
 		}
 		search.setPageSize(pageSize);
-		
+
 		// Business logic 수행
 		Map<String , Object> map=userService.getUserList(search);
-		
+
 		Page resultPage = new Page( search.getCurrentPage(), ((Integer)map.get("totalCount")).intValue(), pageUnit, pageSize);
 		System.out.println(resultPage);
-		
+
 		// Model 과 View 연결
 		model.addAttribute("list", map.get("list"));
 		model.addAttribute("resultPage", resultPage);
 		model.addAttribute("search", search);
-		
+
 		return "forward:/user/listUser.jsp";
 	}
 }
